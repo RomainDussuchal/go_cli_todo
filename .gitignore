@@ -1,0 +1,8 @@
+# Ignore local todo storage
+todo.json
+
+# VS Code stuff
+.vscode/
+
+# OS-specific
+.DS_Store

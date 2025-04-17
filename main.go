@@ -81,6 +81,12 @@ func main(){
 			case "delete": {
 				handleDelete(&tasks)
 			}
+			case "done": {
+				handleDone(&tasks)
+			}
+		case "exit": {
+			handleExit()
+		}
 		}
 	}
 }
@@ -150,9 +156,34 @@ func handleDelete(tasks *[]Task){
 	for i := range *tasks {
 		(*tasks)[i].Id = i + 1 
 	}
-
 	saveTask(tasks)
 	fmt.Println("✅ Task deleted.")
+}
+
+func handleDone(tasks *[]Task){
+	fmt.Println("Enter the ID of the task to mark as done:")
+	reader := bufio.NewReader(os.Stdin)
+	input, _ := reader.ReadString('\n')
+	input = strings.TrimSpace(input)
+	id, err := strconv.Atoi(input)
+	if err != nil || id <= 0 {
+		fmt.Println("⚠️ Invalid ID")
+		return
+	}
+	index :=  id-1
+
+	if (*tasks)[index].Status == "done" {
+		fmt.Println("⚠️ Task already marked as done.")
+		return
+	}
+	(*tasks)[index].Status = "done"
+	saveTask(tasks)
+	fmt.Printf("✅ Task %d marked as done.\n", id)
+}
+
+func handleExit(){
+	fmt.Println("👋 Goodbye!")
+	os.Exit(0)
 }
 
 	
