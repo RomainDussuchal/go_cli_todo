@@ -69,7 +69,7 @@ func main(){
 	}
 
 	for {
-		fmt.Println("\nAvailable commands: add | edit | list | delete | done | help | exit")
+		fmt.Println("\nAvailable commands: add | edit | list | timer | delete | delete -all | done | help | exit")
 		fmt.Print("> ")
 		reader := bufio.NewReader(os.Stdin)
 		input, _ := reader.ReadString('\n')
@@ -79,6 +79,9 @@ func main(){
 		switch args[0] {
 			case "add":{
 				handleAdd(&tasks)
+			}
+			case "edit": {
+				handleEdit(&tasks)
 			}
 			case "list": {
 				filter := ""
@@ -92,12 +95,19 @@ func main(){
 					fmt.Println("❌ Invalid usage. Try: list, list done, or list pending")
 				}	
 			}
-			case "edit": {
-				handleEdit(&tasks)
+			case "timer": {
+				handleTimer()
 			}
+			
 			case "delete": {
+				if len(args) == 1 {
 				handleDelete(&tasks)
-			}
+				} else if 
+					len(args) == 2 && (args[1] == "-all") {
+						handleDeleteAll(&tasks)
+					}
+				}
+		
 			case "done": {
 				handleDone(&tasks)
 			}
@@ -116,9 +126,6 @@ func handleAdd(tasks *[]Task) {
 	if input == "" {
 		fmt.Println("⚠️ Task cannot be empty")
 	}
-
-	
-
 	newTask := Task{
 		Id: len(*tasks) + 1,
 		Item: input,
@@ -202,6 +209,27 @@ func handleList(tasks *[]Task, filter string) {
 		fmt.Printf("%d. %s %s\n", task.Id, status, task.Item)
 	}
 }
+func handleTimer(){
+	fmt.Println("Start Timer")
+	duration := 3 * time.Minute
+	ticker := time.NewTicker(1 * time.Second)
+	defer ticker.Stop()
+
+	start := time.Now()
+	end := start.Add(duration)
+	
+	for now := range ticker.C {
+		remaining := end.Sub(now)
+
+		if remaining <= 0 {
+			break
+		}
+
+		fmt.Printf("\r⏳ %s remaining", remaining.Truncate(time.Second))
+	}
+
+	fmt.Println("\n✅ Time's up!")
+}
 
 func handleDelete(tasks *[]Task){
 	fmt.Print("Indicate task ID to delete :\n")
@@ -238,6 +266,31 @@ func handleDelete(tasks *[]Task){
 	saveTasks(tasks)
 	fmt.Println("✅ Task deleted.")
 }
+
+func handleDeleteAll(tasks *[]Task) {
+	fmt.Println("⚠️ Are you sure you want to DELETE ALL tasks? [y/n]:")
+	reader := bufio.NewReader(os.Stdin)
+	input, _ := reader.ReadString('\n')
+	input = strings.TrimSpace(strings.ToLower(input))
+
+	if input != "y" && input != "n" {
+		fmt.Println("❌ Invalid input. Only 'y' or 'n' are accepted.")
+		return
+	}
+
+	if input == "y" {
+		*tasks = []Task{}
+		err := saveTasks(tasks)
+		if err != nil {
+			fmt.Println("❌ Failed to delete all tasks:", err)
+			return
+		}
+		fmt.Println("✅ All tasks deleted.")
+	} else {
+		fmt.Println("❌ Delete All Canceled.")
+	}
+}
+
 
 func handleDone(tasks *[]Task){
 	fmt.Println("Enter the ID of the task to mark as done:")
