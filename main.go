@@ -8,6 +8,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 )
 
 
@@ -15,6 +16,9 @@ type Task struct {
 	Id     int    `json:"id"`
 	Item   string `json:"item"`
 	Status string `json:"status"` // "pending" or "done"
+	CreatedAt string `json:"createdAt"`
+	UpdatedAt string  `json:"UpdatedAt"`
+
 }
 
 const filename = "todo.json"
@@ -43,7 +47,7 @@ func loadTasks()([]Task, error){
 	return tasks, nil
 }
 
-func saveTask(tasks *[]Task)error{
+func saveTasks(tasks *[]Task)error{
 	file, err := os.Create(filename) // truncates if exists
 	if err != nil {
 		return err
@@ -65,18 +69,31 @@ func main(){
 	}
 
 	for {
-		fmt.Println("\nAvailable commands: add | list | delete | done | help | exit")
+		fmt.Println("\nAvailable commands: add | edit | list | delete | done | help | exit")
 		fmt.Print("> ")
 		reader := bufio.NewReader(os.Stdin)
 		input, _ := reader.ReadString('\n')
 		input = strings.TrimSpace(strings.ToLower(input))
+		args := strings.Fields(strings.ToLower(input))
 	
-		switch input {
+		switch args[0] {
 			case "add":{
 				handleAdd(&tasks)
 			}
 			case "list": {
-				handleList(&tasks)
+				filter := ""
+				if len(args) == 1 {
+					fmt.Println("All items in the list:")
+					handleList(&tasks, filter)
+				} else if len(args) == 2 && (args[1] == "pending" || args[1] == "done") {
+					filter = args[1]
+					handleList(&tasks, filter)
+				} else {
+					fmt.Println("❌ Invalid usage. Try: list, list done, or list pending")
+				}	
+			}
+			case "edit": {
+				handleEdit(&tasks)
 			}
 			case "delete": {
 				handleDelete(&tasks)
@@ -95,32 +112,94 @@ func handleAdd(tasks *[]Task) {
 	reader := bufio.NewReader(os.Stdin)
 	input, _ := reader.ReadString('\n')
 
-	input = strings.TrimSpace(strings.ToLower(input))
+	input = strings.TrimSpace(input)
 	if input == "" {
 		fmt.Println("⚠️ Task cannot be empty")
 	}
+
+	
 
 	newTask := Task{
 		Id: len(*tasks) + 1,
 		Item: input,
 		Status: "pending",
+		CreatedAt: time.Now().Format(time.RFC3339),
+		UpdatedAt: time.Now().Format(time.RFC3339),
 	}
 
 	*tasks = append(*tasks, newTask)
 
 	fmt.Printf("Saving Task: %s", newTask.Item)
 
-	saveTask(tasks)
+	saveTasks(tasks)
 	fmt.Printf("✅ Task added: \"%s\"\n", newTask.Item)
-
 }
 
-func handleList(tasks *[]Task) {
+func handleEdit(tasks *[]Task){
+	fmt.Println("Select ID of the task to edit")
+	fmt.Println("> ")
+	reader := bufio.NewReader(os.Stdin)
+	input, _ := reader.ReadString('\n')
+
+	input = strings.TrimSpace(input)
+
+	id, err := strconv.Atoi(input)
+	if err != nil {
+		fmt.Println("Please enter a number")
+		return
+	}
+	index := id-1
+
+	fmt.Printf("Current task: %s\n", (*tasks)[index].Item)
+	fmt.Println("Enter new task content:")
+	fmt.Printf("> ")
+
+	input, _ = reader.ReadString('\n')
+	input = strings.TrimSpace(input)
+	(*tasks)[index].Item = input
+	(*tasks)[index].UpdatedAt = time.Now().Format(time.RFC3339)
+	
+
+	saveTasks(tasks)
+
+	fmt.Printf("Task Id: %d properly edited: %s", id, input)
+}
+
+func handleList(tasks *[]Task, filter string) {
+	
 	if len(*tasks) == 0 {
 		fmt.Println("No item in the list.")
 	}
+
+	if len(filter) > 0 {
+	fmt.Printf("📋 Listing tasks")
+	if filter != "" {
+		fmt.Printf(" (filter: %s)", filter)
+	}
+	fmt.Println(":")
+		
 	for _, task := range *tasks {
-		fmt.Printf("item: %d - %s - status: %s\n", task.Id,task.Item, task.Status)
+		if filter == "done" && task.Status != "done" {
+			continue
+		}
+		if filter == "pending" && task.Status != "pending" {
+			continue
+		}
+		status := "[ ]"
+		if task.Status == "done" {
+			status = "[x]"
+		}
+		fmt.Printf("%d. %s %s\n", task.Id, status, task.Item)
+	}
+		return 
+	}
+	for _, task := range *tasks {
+		
+		status := "[ ]"
+		if task.Status == "done" {
+			status = "[x]"
+		}
+		fmt.Printf("%d. %s %s\n", task.Id, status, task.Item)
 	}
 }
 
@@ -156,7 +235,7 @@ func handleDelete(tasks *[]Task){
 	for i := range *tasks {
 		(*tasks)[i].Id = i + 1 
 	}
-	saveTask(tasks)
+	saveTasks(tasks)
 	fmt.Println("✅ Task deleted.")
 }
 
@@ -177,7 +256,7 @@ func handleDone(tasks *[]Task){
 		return
 	}
 	(*tasks)[index].Status = "done"
-	saveTask(tasks)
+	saveTasks(tasks)
 	fmt.Printf("✅ Task %d marked as done.\n", id)
 }
 
@@ -185,6 +264,7 @@ func handleExit(){
 	fmt.Println("👋 Goodbye!")
 	os.Exit(0)
 }
+
 
 	
 
